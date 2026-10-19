@@ -71,7 +71,7 @@ pub(super) fn handle_x_resource_request(
         (rc == 0 && cred.pid > 0).then(|| cred.pid.cast_unsigned())
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(all(target_os = "linux", feature = "native")))]
     fn client_peer_pid(_client: &crate::server::ClientState) -> Option<u32> {
         None
     }

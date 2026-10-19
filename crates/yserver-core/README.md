@@ -6,7 +6,7 @@ listeners, shared memory and descriptor-passing behavior.
 For an in-process server on Windows, Android, iOS, macOS or Linux, use:
 
 ```toml
-yserver-core = { git = "https://github.com/tempest-term/yserver.git", tag = "yserver-core-v1.7.1-tempest.2", default-features = false }
+yserver-core = { git = "https://github.com/tempest-term/yserver.git", tag = "yserver-core-v1.7.1-tempest.3", default-features = false }
 ```
 
 The portable core provides `MemoryStream`, a bounded duplex byte stream with
