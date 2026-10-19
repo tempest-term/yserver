@@ -458,7 +458,7 @@ pub(crate) fn newly_exposed(
         .collect()
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
 

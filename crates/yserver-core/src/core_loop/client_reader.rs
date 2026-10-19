@@ -342,7 +342,7 @@ pub(crate) fn wait_readable(fd: RawFd) -> io::Result<()> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use crate::core_loop::sender::{CoreReceiver, channel};

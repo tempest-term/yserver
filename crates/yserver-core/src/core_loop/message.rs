@@ -2,7 +2,10 @@
 //!
 //! See `docs/superpowers/plans/2026-05-06-single-threaded-core.md` Phase B.
 
-use std::{os::fd::OwnedFd, path::PathBuf, time::Instant};
+#[cfg(feature = "native")]
+use std::os::fd::OwnedFd;
+
+use std::{path::PathBuf, time::Instant};
 
 use yserver_protocol::x11::{ClientByteOrder, ClientId, RequestHeader, SequenceNumber};
 
@@ -235,7 +238,7 @@ pub enum Message {
     /// The server's own X client (a window shell's clipboard bridge): the
     /// core runs the setup on `stream` as for an accepted connection, with
     /// no authorization, and marks the client internal.
-    InternalClient(std::os::unix::net::UnixStream),
+    InternalClient(crate::transport::Transport),
     /// One framed X11 request from a client reader thread.
     Request {
         id: ClientId,
@@ -247,6 +250,7 @@ pub enum Message {
         accepted_at: Option<Instant>,
         header: RequestHeader,
         body: Vec<u8>,
+        #[cfg(feature = "native")]
         attached_fd: Option<OwnedFd>,
     },
     /// Reader thread (or write-side disconnect detection) noticed the
@@ -430,7 +434,7 @@ pub fn device_node_from_sysname(sysname: &str) -> String {
     format!("/dev/input/{sysname}")
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
 

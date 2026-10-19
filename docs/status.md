@@ -33,6 +33,15 @@ lives in [`code-quality-audit-2026-07-26.md`](code-quality-audit-2026-07-26.md).
 
 ---
 
+- **2026-10-19 portable embedded core:** `yserver-core` now has a default
+  `native` feature and an opt-in `embedded` memory transport. Disabling
+  `native` excludes Unix sockets, host X11, shared memory and descriptor
+  passing, while retaining protocol dispatch and a host-provided backend.
+  See [`crates/yserver-core/README.md`](../crates/yserver-core/README.md)
+  for the API, authentication boundary and validation commands. Native
+  behavior and tests are retained; portable CI covers Linux, macOS,
+  Windows and an Android cross-check.
+
 - **2026-10-15 macOS M3: window, scale, clipboard, bundle (branch `feat/macos-m0`, plan
   `plans/2026-10-14-macos-m3-window.md`):** the X screen follows the window. Resizes are coalesced per frame-clock
   tick (`surface/resize.rs` `ResizeCoalescer`); the root and the output size are separate, so RRSetScreenSize and a

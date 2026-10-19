@@ -25,7 +25,7 @@ macro_rules! handle {
                 self.0.get()
             }
 
-            #[cfg(test)]
+            #[cfg(all(test, feature = "native"))]
             pub fn from_raw_for_test(raw: u32) -> Self {
                 Self::from_raw_panicking(raw)
             }

@@ -720,7 +720,7 @@ fn lowest_common_ancestor(a: &[ResourceId], b: &[ResourceId]) -> Option<Resource
     b.iter().copied().find(|w| a_set.contains(w))
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
 

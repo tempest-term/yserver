@@ -3135,7 +3135,7 @@ fn fire_pending_repeats_sends_key_repeat_not_device_key() {
 
 /// Helper: a touchpad `DeviceInfo` mirroring libinput's enumeration
 /// of a Synaptics pad (matches xinput.rs's `touchpad_info`).
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 fn probe_touchpad_info() -> crate::core_loop::DeviceInfo {
     use crate::core_loop::message::{BoolSetting, LibinputConfigSnapshot};
     crate::core_loop::DeviceInfo {
@@ -3174,7 +3174,7 @@ fn probe_touchpad_info() -> crate::core_loop::DeviceInfo {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 fn xtest_pointer_name(state: &ServerState) -> String {
     state
         .xi_devices

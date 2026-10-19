@@ -1492,7 +1492,7 @@ pub(crate) fn deepest_window_at_pointer(state: &ServerState) -> ResourceId {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use crate::server::{

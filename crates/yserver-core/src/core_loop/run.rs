@@ -15,21 +15,24 @@
 /// A reset is observed through the generation counter — the boundary
 /// bumps it, and nothing else in the loop does — read from the clone the
 /// test keeps before handing `CoreReceiver` to the loop.
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod server_reset;
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests;
 
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     io,
-    os::fd::{AsRawFd, OwnedFd, RawFd},
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use log::{error, warn};
-use mio::{Events, Interest, Poll, unix::SourceFd};
+use mio::{Events, Poll};
+#[cfg(feature = "native")]
+use mio::{Interest, unix::SourceFd};
+#[cfg(feature = "native")]
+use std::os::fd::{AsRawFd, OwnedFd, RawFd};
 
 use super::{
     auth::AuthState,
@@ -37,10 +40,7 @@ use super::{
     generation::{self, Generation},
     input_inventory::InputInventory,
     message::{HostInputEvent, Message, SetupAllocateResponse, XiConfigRequest},
-    poll_tokens::{
-        ClientIdAllocator, NOTIFY_TOKEN, backend_token, client_token, listener_token,
-        token_to_backend_index, token_to_client, token_to_listener_index,
-    },
+    poll_tokens::{ClientIdAllocator, NOTIFY_TOKEN},
     process_request::{
         PendingCrtcConfig, PropertyDispatchError, RequestOutcome, ValidatedXiChange,
         complete_crtc_config, fire_present_configure_notify_for_window, process_request,
@@ -50,8 +50,17 @@ use super::{
     setup_thread::{self, SetupRegistry},
     xdmcp::{XDMCP_TOKEN, XdmcpOutcome, XdmcpService},
 };
+#[cfg(feature = "native")]
 use crate::{
-    backend::{Backend, BackendFdKind, CrtcConfigToken, HostSocketStatus},
+    backend::{BackendFdKind, HostSocketStatus},
+    core_loop::poll_tokens::{
+        backend_token, client_token, listener_token, token_to_backend_index, token_to_client,
+        token_to_listener_index,
+    },
+};
+
+use crate::{
+    backend::{Backend, CrtcConfigToken},
     host_x11::HostEvent,
     server::{KeyRepeatState, ServerState},
     transport::{Listener, Transport},
@@ -557,6 +566,7 @@ const REQUEST_TIME_BUDGET: Duration = Duration::from_millis(8);
 /// is encoded in its mio token, preserving the exact fd identity even when
 /// several entries share one `BackendFdKind`.
 #[derive(Debug, Clone, Copy)]
+#[cfg(feature = "native")]
 struct BackendPollSource {
     fd: RawFd,
     kind: BackendFdKind,
@@ -581,6 +591,7 @@ pub(crate) struct DeferredRequest {
     accepted_at: Option<Instant>,
     header: yserver_protocol::x11::RequestHeader,
     body: Vec<u8>,
+    #[cfg(feature = "native")]
     attached_fd: Option<OwnedFd>,
 }
 
@@ -616,7 +627,7 @@ impl PendingBackendRequests {
         self.xi_config_clients.remove(&client);
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(crate) fn xi_config_client_is_blocked_for_test(
         &self,
         client: yserver_protocol::x11::ClientId,
@@ -656,7 +667,7 @@ impl PendingBackendRequests {
     /// Park a CRTC configuration with only the fields a lifetime test
     /// needs. The protocol continuation is inert filler: nothing here
     /// completes the request, it only has to be cancellable.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(crate) fn park_crtc_for_test(
         &mut self,
         client: yserver_protocol::x11::ClientId,
@@ -681,7 +692,7 @@ impl PendingBackendRequests {
         })
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(crate) fn is_empty(&self) -> bool {
         self.crtc_by_token.is_empty()
             && self.crtc_by_client.is_empty()
@@ -742,7 +753,7 @@ pub(crate) struct XiConfigLane {
 }
 
 impl XiConfigLane {
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(super) fn is_empty(&self) -> bool {
         self.queued.is_empty() && self.in_flight.is_none() && self.timed_out.is_empty()
     }
@@ -761,7 +772,7 @@ pub(crate) struct FairRequestQueue {
 }
 
 impl FairRequestQueue {
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(crate) fn is_empty(&self) -> bool {
         self.len == 0
     }
@@ -809,7 +820,7 @@ impl FairRequestQueue {
         self.len = self.len.saturating_add(added);
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     fn pop_front(&mut self) -> Option<DeferredRequest> {
         self.pop_front_if(|_| true)
     }
@@ -870,7 +881,7 @@ impl FairRequestQueue {
 /// A minimal `DeferredRequest` for tests outside this module. The
 /// opcode is arbitrary: the reset boundary discards these without ever
 /// decoding one.
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 pub(crate) fn deferred_request_for_test(id: u32) -> DeferredRequest {
     DeferredRequest {
         id: yserver_protocol::x11::ClientId(id),
@@ -1719,6 +1730,7 @@ fn process_one_request(
         req.sequence,
         req.header,
         &req.body,
+        #[cfg(feature = "native")]
         req.attached_fd,
     );
     // The one client removal that does NOT come back as
@@ -1894,7 +1906,7 @@ fn process_request_inline(
     sequence: yserver_protocol::x11::SequenceNumber,
     header: yserver_protocol::x11::RequestHeader,
     body: &[u8],
-    attached_fd: Option<OwnedFd>,
+    #[cfg(feature = "native")] attached_fd: Option<OwnedFd>,
 ) -> RequestOutcome {
     // Half-closed-socket / post-disconnect guard. The `Message::Request`
     // The reader/channel/fair-queue path preserves per-client arrival order.
@@ -1928,7 +1940,16 @@ fn process_request_inline(
         );
         return RequestOutcome::Handled;
     }
-    let outcome = match process_request(state, backend, id, sequence, header, body, attached_fd) {
+    let outcome = match process_request(
+        state,
+        backend,
+        id,
+        sequence,
+        header,
+        body,
+        #[cfg(feature = "native")]
+        attached_fd,
+    ) {
         Ok(out) => out,
         Err(err) => {
             // A request handler errored — usually a backend-side
@@ -2051,7 +2072,7 @@ pub fn run_core(
     xdmcp: Option<XdmcpService>,
 ) -> io::Result<()> {
     let mut input_inventory = InputInventory::new();
-    run_core_with_inventory(
+    let result = run_core_with_inventory(
         poll,
         rx,
         sender,
@@ -2063,7 +2084,23 @@ pub fn run_core(
         reset_policy,
         xdmcp,
         &mut input_inventory,
-    )
+    );
+    #[cfg(not(feature = "native"))]
+    super::reset::force_destroy_all_clients(state, backend);
+    #[cfg(all(feature = "native", feature = "embedded"))]
+    {
+        let memory_clients: Vec<_> = state
+            .clients
+            .iter()
+            .filter(|(_, client)| client.writer.lock().unwrap().is_memory())
+            .map(|(&id, _)| yserver_protocol::x11::ClientId(id))
+            .collect();
+        for id in memory_clients {
+            state.close_down_modes.remove(&id.0);
+            super::process_disconnect::process_disconnect(state, backend, id);
+        }
+    }
+    result
 }
 
 fn run_core_with_inventory(
@@ -2088,6 +2125,7 @@ fn run_core_with_inventory(
     // armed, not inferred"). False until a client becomes established,
     // and false again immediately after every reset.
     let mut reset_trigger = ResetTrigger::new(reset_policy);
+    #[cfg(feature = "native")]
     let listeners: Vec<_> = listeners
         .into_iter()
         .enumerate()
@@ -2101,7 +2139,11 @@ fn run_core_with_inventory(
             Ok(listener)
         })
         .collect::<io::Result<_>>()?;
+    #[cfg(feature = "native")]
     let mut listener_readiness = ListenerReadiness::new(listeners.len());
+
+    #[cfg(not(feature = "native"))]
+    let _ = listeners;
 
     // XDMCP: one UDP socket in this same poll set, and the first query.
     // `None` unless argv named `-query`/`-broadcast`/`-indirect`, in which
@@ -2121,11 +2163,13 @@ fn run_core_with_inventory(
     // the core never sees the libinput fd in production. The Libinput
     // arm is registered defensively in case a backend variant chooses
     // to skip the dedicated thread and run libinput on the core poll.
+    #[cfg(feature = "native")]
     let backend_poll_sources: Vec<_> = backend
         .poll_fds()
         .into_iter()
         .map(|(fd, kind)| BackendPollSource { fd, kind })
         .collect();
+    #[cfg(feature = "native")]
     for (index, source) in backend_poll_sources.iter().enumerate() {
         let token = backend_token(index).ok_or_else(|| {
             io::Error::other(format!(
@@ -2205,9 +2249,16 @@ fn run_core_with_inventory(
         // to do right now. Without this, an idle moment where the
         // channel is briefly empty would let `poll.poll` block until
         // a fresh fd event, leaving the backlog stranded.
-        let poll_timeout = if deferred_requests.has_runnable(&pending_backend_requests, state)
-            || listener_readiness.has_pending()
-        {
+        let poll_timeout = if deferred_requests.has_runnable(&pending_backend_requests, state) || {
+            #[cfg(feature = "native")]
+            {
+                listener_readiness.has_pending()
+            }
+            #[cfg(not(feature = "native"))]
+            {
+                false
+            }
+        } {
             Some(Duration::ZERO)
         } else {
             // Wake for the earliest deadline owned by either core
@@ -2306,6 +2357,7 @@ fn run_core_with_inventory(
             drain_start,
         );
         for ev in events.iter() {
+            #[cfg(feature = "native")]
             if let Some(index) = token_to_listener_index(ev.token()) {
                 listener_readiness.mark_ready(index);
                 continue;
@@ -2319,6 +2371,7 @@ fn run_core_with_inventory(
                 }
                 continue;
             }
+            #[cfg(feature = "native")]
             if let Some(index) = token_to_backend_index(ev.token()) {
                 let Some(source) = backend_poll_sources.get(index).copied() else {
                     warn!(
@@ -2421,6 +2474,7 @@ fn run_core_with_inventory(
                                 accepted_at,
                                 header,
                                 body,
+                                #[cfg(feature = "native")]
                                 attached_fd,
                             } => {
                                 if telemetry.enabled {
@@ -2434,6 +2488,7 @@ fn run_core_with_inventory(
                                     accepted_at,
                                     header,
                                     body,
+                                    #[cfg(feature = "native")]
                                     attached_fd,
                                 };
                                 // Keep one canonical per-client FIFO even
@@ -2449,14 +2504,15 @@ fn run_core_with_inventory(
                             }
                             Message::InternalClient(stream) => {
                                 let id = client_id_allocator.allocate();
+                                let local = !stream.is_memory();
                                 if let Err(err) = setup_thread::spawn(
                                     id,
                                     stream,
                                     sender.bind(),
                                     setup_registry.clone(),
                                     auth.clone(),
-                                    true,
-                                    true,
+                                    local,
+                                    local,
                                     true,
                                 ) {
                                     error!(
@@ -2715,6 +2771,7 @@ fn run_core_with_inventory(
                                                         accepted_at,
                                                         header,
                                                         body,
+                                                        #[cfg(feature = "native")]
                                                         attached_fd,
                                                     } => {
                                                         if telemetry.enabled {
@@ -2734,6 +2791,7 @@ fn run_core_with_inventory(
                                                                 accepted_at,
                                                                 header,
                                                                 body,
+                                                                #[cfg(feature = "native")]
                                                                 attached_fd,
                                                             },
                                                         );
@@ -2817,6 +2875,7 @@ fn run_core_with_inventory(
                         drain_start,
                     );
                 }
+                #[cfg(feature = "native")]
                 tok => {
                     let Some(client_id) = token_to_client(tok) else {
                         warn!("core_loop::run: unhandled poll token {tok:?}");
@@ -2853,8 +2912,13 @@ fn run_core_with_inventory(
                         }
                     }
                 }
+                #[cfg(not(feature = "native"))]
+                _ => {}
             }
         }
+        #[cfg(not(feature = "native"))]
+        let _ = &events;
+        #[cfg(feature = "native")]
         listener_readiness.accept_ready(
             &listeners,
             client_id_allocator,
@@ -4203,6 +4267,7 @@ fn reconcile_client_writable_interest(
     registry: &mio::Registry,
     state: &mut ServerState,
 ) -> Vec<yserver_protocol::x11::ClientId> {
+    let _ = registry;
     let mut to_disconnect = Vec::new();
     for (id, client) in state.clients.iter_mut() {
         if !client.outbound.is_empty() {
@@ -4218,32 +4283,39 @@ fn reconcile_client_writable_interest(
         if needs_writable == client.watching_writable {
             continue;
         }
-        let raw = std::os::fd::AsRawFd::as_raw_fd(&*client.writer.lock().unwrap());
-        // The writer fd is in the poller only while output waits for room:
-        // the reader thread owns reads, so a READABLE registration would
-        // only wake this loop for every byte the client sends -- and on a
-        // kernel whose edge-triggered readiness also counts the other
-        // direction's traffic, for every byte the server sends too.
-        let changed = if needs_writable {
-            let token = client_token(yserver_protocol::x11::ClientId(*id));
-            match registry.register(&mut SourceFd(&raw), token, Interest::WRITABLE) {
-                // Registered by somebody else meanwhile: take it over.
-                Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {
-                    registry.reregister(&mut SourceFd(&raw), token, Interest::WRITABLE)
+        if client.writer.lock().unwrap().is_memory() {
+            client.watching_writable = needs_writable;
+            continue;
+        }
+        #[cfg(feature = "native")]
+        {
+            let raw = std::os::fd::AsRawFd::as_raw_fd(&*client.writer.lock().unwrap());
+            // The writer fd is in the poller only while output waits for room:
+            // the reader thread owns reads, so a READABLE registration would
+            // only wake this loop for every byte the client sends -- and on a
+            // kernel whose edge-triggered readiness also counts the other
+            // direction's traffic, for every byte the server sends too.
+            let changed = if needs_writable {
+                let token = client_token(yserver_protocol::x11::ClientId(*id));
+                match registry.register(&mut SourceFd(&raw), token, Interest::WRITABLE) {
+                    // Registered by somebody else meanwhile: take it over.
+                    Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {
+                        registry.reregister(&mut SourceFd(&raw), token, Interest::WRITABLE)
+                    }
+                    other => other,
                 }
-                other => other,
-            }
-        } else {
-            registry.deregister(&mut SourceFd(&raw))
-        };
-        match changed {
-            Ok(()) => client.watching_writable = needs_writable,
-            Err(err) if err.kind() == io::ErrorKind::NotFound => {
-                // fd already deregistered (disconnect path); nothing
-                // to track.
-            }
-            Err(err) => {
-                warn!("reregister client {} writable interest: {err}", id);
+            } else {
+                registry.deregister(&mut SourceFd(&raw))
+            };
+            match changed {
+                Ok(()) => client.watching_writable = needs_writable,
+                Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                    // fd already deregistered (disconnect path); nothing
+                    // to track.
+                }
+                Err(err) => {
+                    warn!("reregister client {} writable interest: {err}", id);
+                }
             }
         }
     }
@@ -4573,6 +4645,7 @@ fn handle_client_setup_complete(
 ) -> io::Result<()> {
     use std::sync::{Arc, Mutex, atomic::AtomicU16};
     let writer = stream.try_clone()?;
+    writer.set_write_waker(sender.clone_handle());
     writer.set_nonblocking(true)?;
 
     let (reader_control_tx, reader_control_rx) = crossbeam_channel::unbounded();
@@ -4615,9 +4688,13 @@ fn handle_client_setup_complete(
     // being debugged. The branch already had to learn this distinction
     // once, for authorization.
     let transport_label = match &stream {
+        #[cfg(feature = "native")]
         Transport::Unix(_) => "unix",
+        #[cfg(feature = "native")]
         Transport::Tcp(_) => "TCP",
-        #[cfg(test)]
+        #[cfg(feature = "embedded")]
+        Transport::Memory(_) => "memory",
+        #[cfg(all(test, feature = "native"))]
         Transport::Capture(_) => "test capture",
     };
     // The reader inherits the setup thread's binding rather than
@@ -4696,6 +4773,7 @@ fn handle_client_setup_complete(
 /// is `ssh` as non-local, to catch a forwarded connection. That is a
 /// heuristic on `/proc`, and `ssh -X` reaches us over a UNIX socket
 /// anyway.
+#[cfg(feature = "native")]
 fn address_is_ours(peer: std::net::IpAddr) -> bool {
     if peer.is_loopback() {
         return true;
@@ -4730,15 +4808,18 @@ fn address_is_ours(peer: std::net::IpAddr) -> bool {
 }
 
 /// Accept at most this many connections per listener and core iteration.
+#[cfg(feature = "native")]
 const ACCEPT_BUDGET: usize = 16;
 
 /// Preserve readiness across budget-limited accepts, and rotate the first
 /// listener served each iteration independently of the poller's event order.
+#[cfg(feature = "native")]
 struct ListenerReadiness {
     ready: Vec<bool>,
     next: usize,
 }
 
+#[cfg(feature = "native")]
 impl ListenerReadiness {
     fn new(count: usize) -> Self {
         Self {
@@ -4783,6 +4864,7 @@ impl ListenerReadiness {
 /// Accept one bounded batch, returning whether readiness must be retained.
 /// mio is edge-triggered: after hitting the budget, keep polling this listener
 /// without blocking until an accept reaches WouldBlock.
+#[cfg(feature = "native")]
 fn accept_pending(
     listener: &Listener,
     client_id_allocator: &ClientIdAllocator,
@@ -4859,4 +4941,5 @@ fn accept_pending(
 // Silence unused-import lints when the listener path is only exercised
 // indirectly. Concrete uses below.
 #[allow(dead_code)]
+#[cfg(feature = "native")]
 fn _hint(_: Transport) {}

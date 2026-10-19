@@ -198,7 +198,7 @@ pub fn find_nearest(
     best
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
 

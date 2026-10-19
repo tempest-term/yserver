@@ -2477,7 +2477,7 @@ fn write_list_fonts(
     out.resize(8 + padded, 0);
     stream.write_all(&out)
 }
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::{build_recolor_cursor, build_shape_rectangles, xkb_minor_has_reply};
     use yserver_protocol::x11::xfixes::RegionRect;

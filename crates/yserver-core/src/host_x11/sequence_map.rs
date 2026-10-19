@@ -27,7 +27,7 @@ impl<T> SequenceMap<T> {
         self.entries.remove(pos).map(|(_, value)| value)
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(crate) fn len(&self) -> usize {
         self.entries.len()
     }
@@ -44,7 +44,7 @@ impl<T> SequenceMap<T> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::SequenceMap;
 

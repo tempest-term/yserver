@@ -1,4 +1,4 @@
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -227,7 +227,7 @@ impl AtomTable {
     /// only by tests that need a specific numeric atom (e.g. 100/200
     /// fixtures predating the T3 BadAtom guard); production code goes
     /// through [`Self::intern`] which assigns ids sequentially.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(crate) fn register_for_test(&mut self, atom: AtomId, name: &str) {
         self.by_name.insert(name.to_owned(), atom);
         self.names.insert(atom.0, name.to_owned());
@@ -1314,6 +1314,7 @@ pub struct ServerState {
     /// process name. Updated in the WM_CLASS property handler.
     pub client_wm_class: HashMap<u32, String>,
     /// MIT-SHM segments — keyed by client-supplied `shmseg` ID.
+    #[cfg(feature = "native")]
     pub mit_shm_segments: HashMap<u32, MitShmSegment>,
     /// GLX context registry. Indirect-rendering clients allocate one
     /// or more contexts via CreateContext / CreateNewContext /
@@ -1832,6 +1833,7 @@ impl ServerState {
             present_crtc_clocks: HashMap::new(),
             present_window_msc: HashMap::new(),
             client_wm_class: HashMap::new(),
+            #[cfg(feature = "native")]
             mit_shm_segments: HashMap::new(),
             glx_contexts: HashMap::new(),
             glx_next_context_tag: 1,
@@ -2536,7 +2538,16 @@ impl ServerState {
             || self.sync_alarms.contains_key(&id)
             || self.sync_fences.contains_key(&id)
             || self.damage_objects.contains_key(&id)
-            || self.mit_shm_segments.contains_key(&id)
+            || {
+                #[cfg(feature = "native")]
+                {
+                    self.mit_shm_segments.contains_key(&id)
+                }
+                #[cfg(not(feature = "native"))]
+                {
+                    false
+                }
+            }
             || self.glx_contexts.contains_key(&id)
             || self.glx_drawables.contains_key(&id)
             || self.present_event_selections.contains_key(&id)
@@ -2557,6 +2568,7 @@ impl ServerState {
         out.extend(self.sync_alarms.keys().filter(in_range));
         out.extend(self.sync_fences.keys().filter(in_range));
         out.extend(self.damage_objects.keys().filter(in_range));
+        #[cfg(feature = "native")]
         out.extend(self.mit_shm_segments.keys().filter(in_range));
         out.extend(self.glx_contexts.keys().filter(in_range));
         out.extend(self.glx_drawables.keys().filter(in_range));
@@ -2815,6 +2827,7 @@ pub struct PresentEventSelection {
 /// the file descriptor and the kernel mapping; the `Drop` impl `munmap`s
 /// and closes the fd in the right order.
 #[derive(Debug)]
+#[cfg(feature = "native")]
 pub struct MitShmSegment {
     pub owner: ClientId,
     /// Length of the memory mapping, in bytes.
@@ -2832,6 +2845,7 @@ pub struct MitShmSegment {
 }
 
 #[derive(Debug)]
+#[cfg(feature = "native")]
 enum MitShmBacking {
     /// `AttachFd`: file descriptor that backs `addr` via `mmap`.
     Fd(libc::c_int),
@@ -2841,9 +2855,12 @@ enum MitShmBacking {
 
 // Safe to send across threads: the underlying memory is independent of any
 // thread-local state, and we serialize access via `&mut ServerState`.
+#[cfg(feature = "native")]
 unsafe impl Send for MitShmSegment {}
+#[cfg(feature = "native")]
 unsafe impl Sync for MitShmSegment {}
 
+#[cfg(feature = "native")]
 impl MitShmSegment {
     /// Map an attached file descriptor. Caller must have verified the FD
     /// references a regular file or memfd; we `fstat` to learn the size.
@@ -2946,6 +2963,7 @@ impl MitShmSegment {
     }
 }
 
+#[cfg(feature = "native")]
 impl Drop for MitShmSegment {
     fn drop(&mut self) {
         unsafe {

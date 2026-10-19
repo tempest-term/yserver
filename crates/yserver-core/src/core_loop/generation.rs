@@ -96,7 +96,7 @@ pub(crate) fn should_dispatch(
     message_generation == current_generation || !is_session_scoped(message)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use crate::core_loop::message::HostInputEvent;

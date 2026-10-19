@@ -846,7 +846,7 @@ fn drawable_full_rect(state: &ServerState, drawable: ResourceId) -> xfixes::Regi
     )
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     //! Damage fanout — ancestor-walk + clipping coverage.
     //!

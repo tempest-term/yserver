@@ -15,8 +15,11 @@
 //!   with the generation counter, the setup registry, the loop-local
 //!   per-client collections and a freshly seeded `ServerState`.
 
-use std::{collections::VecDeque, os::fd::AsRawFd};
+use std::collections::VecDeque;
+#[cfg(feature = "native")]
+use std::os::fd::AsRawFd;
 
+#[cfg(feature = "native")]
 use mio::unix::SourceFd;
 use yserver_protocol::x11::ClientId;
 
@@ -107,14 +110,14 @@ impl ResetTrigger {
     }
 
     /// The policy this trigger was built with.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(crate) fn policy(&self) -> ResetPolicy {
         self.policy
     }
 
     /// Whether this generation has ever seen a client become
     /// established.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(crate) fn is_armed(&self) -> bool {
         self.armed
     }
@@ -348,20 +351,27 @@ pub(crate) fn reset_generation(
     // Deregister first: `epoll_ctl(DEL)` needs a live fd, and the
     // teardown below drops the last `ClientState` reference to the
     // writer, closing it.
-    let mut live: Vec<u32> = state.clients.keys().copied().collect();
-    live.sort_unstable();
-    for id in &live {
-        let Some(client) = state.clients.get(id) else {
-            continue;
-        };
-        let raw = match client.writer.lock() {
-            Ok(writer) => writer.as_raw_fd(),
-            Err(poisoned) => poisoned.into_inner().as_raw_fd(),
-        };
-        if let Err(err) = registry.deregister(&mut SourceFd(&raw))
-            && err.kind() != std::io::ErrorKind::NotFound
-        {
-            log::warn!("reset: deregister client {id} from the poller: {err}");
+    let _ = registry;
+    #[cfg(feature = "native")]
+    {
+        let mut live: Vec<u32> = state.clients.keys().copied().collect();
+        live.sort_unstable();
+        for id in &live {
+            let Some(client) = state.clients.get(id) else {
+                continue;
+            };
+            if client.writer.lock().unwrap().is_memory() {
+                continue;
+            }
+            let raw = match client.writer.lock() {
+                Ok(writer) => writer.as_raw_fd(),
+                Err(poisoned) => poisoned.into_inner().as_raw_fd(),
+            };
+            if let Err(err) = registry.deregister(&mut SourceFd(&raw))
+                && err.kind() != std::io::ErrorKind::NotFound
+            {
+                log::warn!("reset: deregister client {id} from the poller: {err}");
+            }
         }
     }
     force_destroy_all_clients(state, backend);
@@ -483,7 +493,7 @@ fn clear_root(state: &mut ServerState, backend: &mut dyn Backend) {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use std::{
         collections::{HashMap, HashSet, VecDeque},

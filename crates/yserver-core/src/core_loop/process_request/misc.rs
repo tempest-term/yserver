@@ -40,10 +40,10 @@ pub(super) fn handle_x_resource_request(
     /// identity — which is a supported outcome, not a gap: Xorg's
     /// `GetClientPid` returns -1 whenever the OS cannot supply one and the
     /// caller then omits the identity (`Xext/xres.c`).
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", feature = "native"))]
     fn client_peer_pid(client: &crate::server::ClientState) -> Option<u32> {
         use std::os::fd::AsRawFd;
-        if !client.is_local {
+        if !client.is_local || client.writer.lock().unwrap().is_memory() {
             return None;
         }
         let guard = client
@@ -272,6 +272,9 @@ pub(super) fn handle_x_resource_request(
 /// `&mut dyn Backend` instead of `Option<&Arc<Mutex<dyn Backend>>>`.
 pub(super) fn extension_query_reply(name: &str, backend: &mut dyn Backend) -> Option<(u8, u8, u8)> {
     use crate::nested::{EXTENSIONS, ExtensionAvailability};
+    if !cfg!(feature = "native") && matches!(name, "MIT-SHM" | "DRI3") {
+        return None;
+    }
     let ext = EXTENSIONS.iter().find(|ext| ext.name == name)?;
     let available = match ext.availability {
         ExtensionAvailability::Always => true,
@@ -298,6 +301,7 @@ pub(super) fn advertised_extension_names(backend: &mut dyn Backend) -> Vec<&'sta
     let glx_available = backend.glx_available();
     EXTENSIONS
         .iter()
+        .filter(|ext| cfg!(feature = "native") || !matches!(ext.name, "MIT-SHM" | "DRI3"))
         .filter(|ext| match ext.availability {
             ExtensionAvailability::Always => true,
             ExtensionAvailability::HostRender => render_available,

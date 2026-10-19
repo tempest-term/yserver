@@ -788,7 +788,7 @@ pub fn encode_change_value(change: DeviceConfigChange) -> Vec<u8> {
 // Tests
 // ---------------------------------------------------------------------------
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
 

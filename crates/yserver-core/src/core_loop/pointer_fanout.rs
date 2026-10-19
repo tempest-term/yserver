@@ -14,7 +14,7 @@
 //! demotes it to a plain field on `HostX11Backend` and at that point
 //! the helper takes `&HostXidMap`.
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests;
 
 use yserver_protocol::x11::{self, ClientId, ResourceId, SequenceNumber};

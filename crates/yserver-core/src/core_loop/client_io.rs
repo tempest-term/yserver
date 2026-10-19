@@ -176,7 +176,7 @@ fn disconnect_kind(k: ErrorKind) -> bool {
 
 /// Test support: fill `client`'s socket, then its outbound buffer to
 /// `OUTBOUND_CAP`, so its next write overflows.
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 pub(crate) fn saturate_for_test(client: &mut ClientState) {
     client.writer.lock().unwrap().set_nonblocking(true).unwrap();
     client
@@ -188,7 +188,7 @@ pub(crate) fn saturate_for_test(client: &mut ClientState) {
     assert!(!client.write_failed);
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use crate::server::ClientState;

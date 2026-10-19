@@ -183,7 +183,7 @@ pub fn slice_for_get<'a>(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
 

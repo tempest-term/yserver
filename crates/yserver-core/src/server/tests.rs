@@ -2365,7 +2365,7 @@ fn cow_with_non_empty_input_shape_descends_into_stage() {
 // intended effect of the refactor.
 
 /// Helper: a full-screen mapped top-level child of root.
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 fn fullscreen_child(state: &mut ServerState, id: u32) -> ResourceId {
     use crate::resources::{ROOT_VISUAL, ROOT_WINDOW};
     use yserver_protocol::x11::CreateWindowRequest;

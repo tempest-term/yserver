@@ -2701,7 +2701,7 @@ fn fire_present_notify_msc_complete_events(
 /// Called from `drain_present_completions` after the backend advances the
 /// vblank clock — this is what keeps a compositor's `present` frame clock
 /// running at the display refresh rate.
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 pub(super) fn fire_due_present_notify_msc(state: &mut ServerState, msc: u64, ust: u64) {
     let mut domains: Vec<(u32, u64)> = state
         .present_pending_msc
@@ -2805,7 +2805,7 @@ pub(crate) fn present_event_window_is_current(
 ) -> bool {
     // Legacy unit fixtures predate window generations and use zero. Real
     // accepted Presents always allocate a nonzero generation.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     if event.window_generation == 0 {
         return true;
     }
@@ -2942,7 +2942,7 @@ pub(crate) fn retire_present_idle(
 /// parked-not-yet-due (this same queue). The hold-back is per-window so a
 /// stalled window's GPU copy cannot head-of-line block another window's
 /// completions.
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 pub(crate) fn fire_due_present_completions(
     state: &mut ServerState,
     backend: &mut dyn Backend,

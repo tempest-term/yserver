@@ -259,12 +259,12 @@ impl RecordState {
         self.contexts.keys().copied()
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(crate) fn fail_recorder_for_test(&mut self, client: ClientId) {
         self.failed.push(client);
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub(crate) fn insert_for_test(&mut self, id: u32, owner: ClientId) {
         self.contexts.insert(
             id,
@@ -1002,7 +1002,7 @@ pub(crate) fn client_disconnected(state: &mut ServerState, client: ClientId) {
 /// (yserver 154 / 189), its root window 0x39f, the uninitialised pad bytes
 /// of its EnableContext replies (zero here), and its batching of several
 /// FromServer elements into one reply (one reply per element here).
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use std::{
         collections::{HashMap, HashSet, VecDeque},

@@ -53,7 +53,7 @@ pub fn resample_channel(src: &[u16], dst_len: usize) -> Vec<u16> {
         .collect()
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
 

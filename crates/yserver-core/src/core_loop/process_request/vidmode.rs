@@ -60,7 +60,7 @@ pub(super) fn current_vidmode_output(state: &ServerState) -> Option<CurrentVidMo
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 pub(super) fn current_vidmode_mode_line(
     state: &ServerState,
 ) -> Option<yserver_protocol::x11::xf86vidmode::ModeLine> {

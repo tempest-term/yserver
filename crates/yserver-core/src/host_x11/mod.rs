@@ -2,6 +2,7 @@ mod pump;
 mod request;
 mod sequence_map;
 mod trait_impl;
+pub(crate) mod types;
 
 pub use pump::{
     HostConfigureEvent, HostEvent, HostExposeEvent, HostKeyEvent, HostPointerEvent,
@@ -25,15 +26,7 @@ use pump::{HostSetup, HostStream, connect_to_host, decode_host_event, read_setup
 use sequence_map::SequenceMap;
 
 /// Outcome of a single `drain_host_socket` pass.
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum HostSocketStatus {
-    /// Read drained the kernel buffer; nothing more to read right now.
-    /// Frames decoded out of `read_buffer` have been classified.
-    WouldBlock,
-    /// Host closed the connection. The core's host-X11 poll-source arm
-    /// posts `Message::Shutdown` in response.
-    Eof,
-}
+pub use types::HostSocketStatus;
 
 /// Pull a single complete X11 frame off the front of `buf` if one is
 /// fully buffered; otherwise return `None`. Reply (`header[0] == 1`)
@@ -55,14 +48,7 @@ fn try_extract_frame(buf: &mut Vec<u8>) -> Option<Vec<u8>> {
     Some(buf.drain(..total).collect())
 }
 
-pub(crate) const POINTER_EVENT_MASK: u32 = 0x0000_0004 // ButtonPress
-    | 0x0000_0008 // ButtonRelease
-    | 0x0000_0010 // EnterWindow
-    | 0x0000_0020 // LeaveWindow
-    | 0x0000_0040 // PointerMotion
-    | 0x0000_8000; // Exposure
-
-pub(crate) const SUBWINDOW_EVENT_MASK: u32 = 0x0000_8000; // Exposure
+pub(crate) use types::{POINTER_EVENT_MASK, SUBWINDOW_EVENT_MASK}; // Exposure
 
 pub(super) enum ResponseMatch {
     Return,
@@ -278,44 +264,7 @@ pub(super) enum HostFillState {
 /// host container's visual. `Explicit` carries the host xids needed to
 /// honour ARGB top-levels: the host requires both a real visual id and
 /// a colormap whose visual matches.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum HostSubwindowVisual {
-    CopyFromParent,
-    /// Preserve the nested window depth for non-host backends that do
-    /// not need an upstream visual/colormap translation. Host X11
-    /// request encoding treats this like CopyFromParent; KMS backends
-    /// use the carried depth directly.
-    DepthOnly {
-        depth: u8,
-    },
-    Explicit {
-        depth: u8,
-        visual_xid: u32,
-        colormap_xid: u32,
-    },
-}
-
-impl HostSubwindowVisual {
-    pub(super) fn depth(self) -> u8 {
-        match self {
-            Self::CopyFromParent | Self::DepthOnly { .. } => 0,
-            Self::Explicit { depth, .. } => depth,
-        }
-    }
-
-    pub(super) fn visual_xid(self) -> u32 {
-        match self {
-            Self::CopyFromParent | Self::DepthOnly { .. } => 0,
-            Self::Explicit { visual_xid, .. } => visual_xid,
-        }
-    }
-}
-
-/// Host-XID → nested ResourceId lookup. F2 demoted this from
-/// `Arc<Mutex<HashMap>>` to a plain `HashMap` — only the core thread
-/// reads or writes it, so the lock is unnecessary.
-pub type HostXidMap = HashMap<u32, ResourceId>;
-
+pub use types::{HostSubwindowVisual, HostXidMap};
 impl HostX11Backend {
     pub fn open_from_env(width: u16, height: u16) -> io::Result<Self> {
         let mut stream = connect_to_host()?;
@@ -646,7 +595,7 @@ impl HostX11Backend {
         self.host_event_masks.remove(&host_xid);
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     fn host_event_mask(&self, host_xid: u32) -> u32 {
         self.host_event_masks.get(&host_xid).copied().unwrap_or(0)
     }
@@ -1379,7 +1328,7 @@ pub(super) fn read_response(stream: &mut HostStream) -> io::Result<HostResponse>
 // dispatcher thread is gone; `drain_host_socket` is the canonical
 // reader and classifies frames inline (see `classify_frame`).
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::{
         HostClipState, HostError, HostFillState, HostResponse, HostStream, HostX11Backend,
@@ -2970,7 +2919,7 @@ mod tests {
         assert_eq!(map.get(&0xabcd_1234).copied(), Some(nested_id));
     }
 
-    /// `SequenceMap` len helper is `#[cfg(test)]` only — surface it
+    /// `SequenceMap` len helper is `#[cfg(all(test, feature = "native"))]` only — surface it
     /// through a trivial test so the compiler doesn't dead-code-strip
     /// it when these tests run.
     #[test]

@@ -612,7 +612,7 @@ fn local_address_for(socket: &UdpSocket, peer: Option<SocketAddr>) -> Option<IpA
     probe.local_addr().ok().map(|addr| addr.ip())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use yserver_protocol::xdmcp::{MIT_MAGIC_COOKIE_1, XDM_MIN_RTX, XDM_RTX_LIMIT};

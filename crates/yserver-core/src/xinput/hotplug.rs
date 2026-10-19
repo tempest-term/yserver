@@ -507,7 +507,7 @@ fn hierarchy_descriptor(state: &ServerState, device_id: u16) -> (u8, u16) {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use std::{
         collections::{HashMap, HashSet, VecDeque},

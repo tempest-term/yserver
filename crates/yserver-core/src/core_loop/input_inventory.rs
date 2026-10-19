@@ -104,7 +104,7 @@ impl InputInventory {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use crate::core_loop::message::LibinputConfigSnapshot;

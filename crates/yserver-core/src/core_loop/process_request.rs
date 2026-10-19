@@ -30,6 +30,7 @@
 mod colormaps;
 mod composite_damage;
 mod drawing;
+#[cfg(feature = "native")]
 mod dri3;
 mod focus_pointer;
 mod fonts;
@@ -51,6 +52,7 @@ mod vidmode;
 mod windows;
 mod xi;
 mod xkb;
+#[cfg(feature = "native")]
 mod xshm;
 mod xtest;
 
@@ -70,7 +72,6 @@ use crate::core_loop::process_request::{
         handle_poly_segment, handle_poly_text8, handle_poly_text16, handle_put_image,
         zpixmap_row_stride,
     },
-    dri3::handle_dri3_request,
     fonts::{
         handle_close_font, handle_get_font_path, handle_list_fonts, handle_list_fonts_with_info,
         handle_open_font, handle_query_font, handle_query_text_extents, handle_set_font_path,
@@ -97,7 +98,6 @@ use crate::core_loop::process_request::{
     render::handle_render_request,
     vidmode::handle_xf86vidmode_request,
     xkb::handle_xkb_request,
-    xshm::handle_mit_shm_request,
     xtest::handle_xtest_request,
 };
 pub(crate) use focus_pointer::*;
@@ -113,14 +113,16 @@ pub(crate) use sync_ext::*;
 pub(crate) use windows::*;
 pub(crate) use xi::*;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod get_image_reply_tests;
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod largest_free_xid_gap_tests;
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests;
 
-use std::{io, os::fd::OwnedFd};
+use std::io;
+#[cfg(feature = "native")]
+use std::os::fd::OwnedFd;
 
 use log::debug;
 use yserver_protocol::{
@@ -128,7 +130,7 @@ use yserver_protocol::{
     x11::{ClientId, RequestHeader, ResourceId, SequenceNumber},
 };
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 use crate::core_loop::pointer_fanout::pointer_event_fanout_to_state;
 use crate::{
     backend::{Backend, OriginContext},
@@ -220,7 +222,7 @@ pub fn process_request(
     sequence: SequenceNumber,
     header: RequestHeader,
     body: &[u8],
-    attached_fd: Option<OwnedFd>,
+    #[cfg(feature = "native")] attached_fd: Option<OwnedFd>,
 ) -> io::Result<RequestOutcome> {
     let origin = Some(OriginContext {
         client_id,
@@ -504,7 +506,8 @@ pub fn process_request(
         // ── DAMAGE extension dispatcher ──
         143 => handle_damage_request(state, backend, client_id, sequence, header, body),
         // ── MIT-SHM extension dispatcher ──
-        130 => handle_mit_shm_request(
+        #[cfg(feature = "native")]
+        130 => xshm::handle_mit_shm_request(
             state,
             backend,
             origin,
@@ -531,7 +534,8 @@ pub fn process_request(
         // ── XTEST extension dispatcher ──
         146 => handle_xtest_request(state, backend, client_id, sequence, header, body),
         // ── DRI3 extension dispatcher ──
-        147 => handle_dri3_request(
+        #[cfg(feature = "native")]
+        147 => dri3::handle_dri3_request(
             state,
             backend,
             client_id,
@@ -726,6 +730,7 @@ fn reject_non_local_extension_request(
 /// bytes — buffering would split them apart. Once the outbound buffer
 /// is non-empty we can't insert an FD-carrying frame, so we drain
 /// first.
+#[cfg(feature = "native")]
 fn send_reply_with_fd(
     client: &mut crate::server::ClientState,
     bytes: &[u8],

@@ -1,6 +1,6 @@
 //! `Backend` trait — the surface `process_request` and the core loop
 //! call on the host backend. Exists primarily as a seam for testing
-//! (`RecordingBackend` lives next door, gated `#[cfg(test)]`) and so
+//! (`RecordingBackend` lives next door, gated `#[cfg(all(test, feature = "native"))]`) and so
 //! that the KMS backend can sit alongside the host-X11 backend without
 //! touching every call site.
 //!
@@ -326,7 +326,7 @@ pub enum PresentWake {
     },
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod present_caps_tests {
     use super::PresentCaps;
 
@@ -449,6 +449,7 @@ impl Dri3Caps {
 /// uses CARD32 strides; op 3 truncates to CARD16). The `fd`'s ownership
 /// transfers to the caller.
 #[derive(Debug)]
+#[cfg(feature = "native")]
 pub struct Dri3PixmapExport {
     pub size: u32,
     pub width: u16,
@@ -492,6 +493,7 @@ pub trait SyncobjHandle: std::fmt::Debug + Send + Sync {
     /// completes. This is the PresentPixmapSynced Copy-path operation used
     /// by Xorg/Xwayland: clients may queue dependent work without reusing the
     /// pixmap before the server's GPU read has retired.
+    #[cfg(feature = "native")]
     fn import_sync_file(
         &self,
         _value: u64,
@@ -735,7 +737,8 @@ pub trait Backend {
     /// `drm_fd` is readable. The backend should drain completion events from
     /// that exact DRM device and submit the next composite/flip. The fd is one
     /// returned by [`Backend::poll_fds`] with [`BackendFdKind::Drm`].
-    fn on_page_flip_ready(&mut self, state: &mut ServerState, drm_fd: std::os::fd::RawFd);
+    #[cfg(feature = "native")]
+    fn on_page_flip_ready(&mut self, _state: &mut ServerState, _drm_fd: std::os::fd::RawFd) {}
 
     /// The DRM hotplug monitor is readable. Default: no-op.
     fn on_display_hotplug(&mut self, _state: &mut ServerState) {}
@@ -1274,7 +1277,10 @@ pub trait Backend {
     /// Raw fds the core's poller should watch on this backend's behalf. The
     /// core gives every entry a unique token and retains both the fd and its
     /// `BackendFdKind` for readiness dispatch.
-    fn poll_fds(&self) -> Vec<(std::os::fd::RawFd, BackendFdKind)>;
+    #[cfg(feature = "native")]
+    fn poll_fds(&self) -> Vec<(std::os::fd::RawFd, BackendFdKind)> {
+        Vec::new()
+    }
 
     /// Downcast to `Any` for backend-specific operations (e.g. KMS composite).
     fn as_any(&self) -> &dyn Any;
@@ -2422,6 +2428,7 @@ pub trait Backend {
     ///
     /// `_drawable` is currently unused (single-GPU only — the fd is
     /// the same regardless of which drawable triggered the request).
+    #[cfg(feature = "native")]
     fn dri3_open(&mut self, _drawable: u32) -> io::Result<std::os::fd::OwnedFd> {
         Err(io::Error::other("DRI3 unsupported on this backend"))
     }
@@ -2457,6 +2464,7 @@ pub trait Backend {
     /// later report back — that round trip is the contract clients
     /// sample by.
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "native")]
     fn dri3_import_pixmap(
         &mut self,
         _fd: std::os::fd::OwnedFd,
@@ -2491,6 +2499,7 @@ pub trait Backend {
     /// fd)`. The fd's ownership transfers to the caller.
     ///
     /// Default impl is unsupported.
+    #[cfg(feature = "native")]
     fn dri3_export_pixmap(
         &mut self,
         _host_xid: u32,
@@ -2505,6 +2514,7 @@ pub trait Backend {
     /// a modifier-tiled backing MUST be exported through here.
     ///
     /// Default impl is unsupported.
+    #[cfg(feature = "native")]
     fn dri3_export_pixmap_buffers(&mut self, _host_xid: u32) -> io::Result<Dri3PixmapExport> {
         Err(io::Error::other(
             "DRI3 BuffersFromPixmap unsupported on this backend",
@@ -2516,6 +2526,7 @@ pub trait Backend {
     /// success the backend owns a `VkSemaphore` keyed by `fence_xid`.
     ///
     /// Default impl is unsupported.
+    #[cfg(feature = "native")]
     fn dri3_fence_from_fd(&mut self, _fence_xid: u32, _fd: std::os::fd::OwnedFd) -> io::Result<()> {
         Err(io::Error::other("DRI3 FenceFromFD unsupported"))
     }
@@ -2525,6 +2536,7 @@ pub trait Backend {
     /// caller.
     ///
     /// Default impl is unsupported.
+    #[cfg(feature = "native")]
     fn dri3_fd_from_fence(&mut self, _fence_xid: u32) -> io::Result<std::os::fd::OwnedFd> {
         Err(io::Error::other("DRI3 FDFromFence unsupported"))
     }
@@ -2534,6 +2546,7 @@ pub trait Backend {
     /// `client_id` — only that client may `FreeSyncobj` it.
     ///
     /// Default impl is unsupported.
+    #[cfg(feature = "native")]
     fn dri3_import_syncobj(
         &mut self,
         _client_id: yserver_protocol::x11::ClientId,
@@ -3058,7 +3071,7 @@ pub trait Backend {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::BackendFdKind;
 
@@ -3094,7 +3107,7 @@ const _: fn() = || {
     let _ = assert_obj_safe;
 };
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod present_completion_trait_tests {
     use super::*;
 

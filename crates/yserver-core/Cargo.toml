@@ -8,16 +8,20 @@ repository.workspace = true
 [dependencies]
 yserver-protocol.workspace = true
 log.workspace = true
-libc.workspace = true
+libc = { workspace = true, optional = true }
 crossbeam-channel.workspace = true
-mio.workspace = true
+mio = { version = "1", features = ["os-poll"] }
 
 [dev-dependencies]
 proptest = "1"
 
 [features]
-default = []
-xdmcp = ["yserver-protocol/xdmcp"]
+default = ["native"]
+# Unix host backends, socket listeners, shared memory and descriptor passing.
+native = ["dep:libc", "mio/net", "mio/os-ext"]
+# Bounded in-process byte streams; supports Windows, Android and Apple targets.
+embedded = []
+xdmcp = ["native", "yserver-protocol/xdmcp"]
 
 [lints]
 workspace = true

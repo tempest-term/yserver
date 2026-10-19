@@ -225,110 +225,7 @@ pub(super) fn decode_host_event(event: &[u8; 32]) -> Option<HostEvent> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum HostEvent {
-    Key(HostKeyEvent),
-    Pointer(HostPointerEvent),
-    Expose(HostExposeEvent),
-    Configure(HostConfigureEvent),
-    Closed,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct HostExposeEvent {
-    pub host_xid: u32,
-    pub x: u16,
-    pub y: u16,
-    pub width: u16,
-    pub height: u16,
-    pub count: u16,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct HostConfigureEvent {
-    pub host_xid: u32,
-    pub x: i16,
-    pub y: i16,
-    pub width: u16,
-    pub height: u16,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum PointerEventKind {
-    ButtonPress,
-    ButtonRelease,
-    MotionNotify,
-    EnterNotify,
-    LeaveNotify,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct HostPointerEvent {
-    /// Producer identity for source-aware XI2 fanout.
-    pub origin: crate::core_loop::message::InputOrigin,
-    pub kind: PointerEventKind,
-    pub host_xid: u32,
-    pub detail: u8,
-    pub time: u32,
-    pub root_x: i16,
-    pub root_y: i16,
-    pub event_x: i16,
-    pub event_y: i16,
-    pub state: u16,
-    /// X11 crossing mode: 0=NotifyNormal, 1=NotifyGrab, 2=NotifyUngrab.
-    /// Only meaningful when `kind` is `EnterNotify`/`LeaveNotify`.
-    pub crossing_mode: u8,
-    /// X11 EnterNotify/LeaveNotify `child` field, as computed by the
-    /// producer per X11 spec (see `crossings::CrossingEvent::child`).
-    /// 0 = X11 `None`. The encoder layer uses this directly for
-    /// Crossing events rather than the propagation walk's child,
-    /// since spec-correct child semantics aren't a function of the
-    /// fanout walk.
-    pub child: u32,
-    /// Raw relative device delta for a `MotionNotify` (libinput dx/dy,
-    /// pre-clamp; summed across coalesced motions). Emitted as the XI2
-    /// RawMotion valuator so relative-mouse apps (SDL2 games) get true
-    /// deltas instead of the absolute position. 0 for non-motion events.
-    /// (#96 follow-up: chromium-bsu ship-pins-to-corner bug)
-    pub raw_dx: i32,
-    pub raw_dy: i32,
-    /// A crossing from a window-tree change under a still pointer, not from
-    /// device motion. Its XI2 form names the master pointer as `sourceid`,
-    /// as Xorg's `CheckMotion(NULL)` does (`dix/events.c:3244`).
-    pub tree_change: bool,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct HostKeyEvent {
-    pub origin: crate::core_loop::message::InputOrigin,
-    pub pressed: bool,
-    pub keycode: u8,
-    pub time: u32,
-    pub root_x: i16,
-    pub root_y: i16,
-    pub event_x: i16,
-    pub event_y: i16,
-    pub state: u16,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct PointerPosition {
-    pub same_screen: bool,
-    pub win_x: i16,
-    pub win_y: i16,
-    pub mask: u16,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct HostSubwindowConfig {
-    pub x: Option<i16>,
-    pub y: Option<i16>,
-    pub width: Option<u16>,
-    pub height: Option<u16>,
-    pub border_width: Option<u16>,
-    pub sibling: Option<u32>,
-    pub stack_mode: Option<u8>,
-}
+pub use super::types::*;
 
 #[derive(Clone, Debug, Default)]
 struct XAuthority {
@@ -531,7 +428,7 @@ fn scan_for_argb_visual(body: &[u8], mut off: usize, depth_count: usize) -> Opti
 // `HostX11Backend`'s `CONTAINER_EVENT_MASK` (set at CreateWindow time)
 // and `update_host_event_mask` for everything past container init.
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::scan_for_argb_visual;
 

@@ -709,7 +709,7 @@ pub(crate) fn emit_change_device_notify(
     });
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use crate::server::ClientState;

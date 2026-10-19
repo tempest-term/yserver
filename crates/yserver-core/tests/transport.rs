@@ -1,3 +1,4 @@
+#![cfg(feature = "native")]
 use std::{
     io::{Read, Write},
     net::Shutdown,

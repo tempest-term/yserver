@@ -1,5 +1,5 @@
 use super::*;
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 use crate::core_loop::process_request::vidmode::current_vidmode_mode_line;
 use crate::core_loop::process_request::vidmode::{
     current_vidmode_output, vidmode_monitor_identity,

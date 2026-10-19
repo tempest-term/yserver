@@ -78,6 +78,11 @@ pub fn spawn(
     internal: bool,
 ) -> io::Result<()> {
     let stream = stream.into();
+    let (is_local, fd_passing) = if stream.is_memory() {
+        (false, false)
+    } else {
+        (is_local, fd_passing)
+    };
     // BSD `accept` (macOS has no `accept4`) inherits the listener's O_NONBLOCK;
     // the setup thread's timed blocking reads need a blocking socket.
     stream.set_nonblocking(false)?;
@@ -160,9 +165,13 @@ fn run_setup(
     // Authorization follows the actual socket, independently of extension
     // capability metadata: TCP must never take the local-open fallback.
     let auth_transport = match &stream {
+        #[cfg(feature = "native")]
         Transport::Unix(_) => AuthTransport::Unix,
+        #[cfg(feature = "native")]
         Transport::Tcp(_) => AuthTransport::Tcp,
-        #[cfg(test)]
+        #[cfg(feature = "embedded")]
+        Transport::Memory(_) => AuthTransport::Tcp,
+        #[cfg(all(test, feature = "native"))]
         Transport::Capture(_) => panic!("test capture transport cannot perform setup"),
     };
     // The generation handed to `check` is THIS thread's producer binding,
@@ -288,7 +297,7 @@ fn run_setup(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use crate::{core_loop::sender::channel, xauth::MIT_MAGIC_COOKIE};

@@ -121,7 +121,7 @@ pub fn format_core_holders(holders: Option<&[CoreHolder]>) -> String {
     s
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use yserver_protocol::x11::{ClientId, CreatePixmapRequest, CreateWindowRequest, ResourceId};
 

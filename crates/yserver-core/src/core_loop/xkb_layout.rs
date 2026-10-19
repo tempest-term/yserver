@@ -637,7 +637,7 @@ pub fn resync_xkb_announced(state: &mut ServerState, backend: &mut dyn Backend) 
 
 pub(crate) use crate::core_loop::xkb_select::subscribers;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use crate::{backend::recording::RecordingBackend, server::ServerState};

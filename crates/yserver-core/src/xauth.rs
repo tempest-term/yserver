@@ -65,7 +65,7 @@ fn read_field(bytes: &[u8], cursor: &mut usize) -> Option<Vec<u8>> {
     Some(value)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
 

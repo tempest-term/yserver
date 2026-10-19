@@ -497,6 +497,7 @@ pub fn process_disconnect_reporting(
             }
         }
     }
+    #[cfg(feature = "native")]
     state
         .mit_shm_segments
         .retain(|_, seg| seg.owner != client_id);
@@ -955,7 +956,7 @@ pub fn destroy_zombie_resources_reporting(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use std::{
         collections::{HashMap, HashSet, VecDeque},

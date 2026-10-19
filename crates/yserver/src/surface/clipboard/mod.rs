@@ -117,7 +117,7 @@ fn serve(
         }
         *slot = Some(ours.try_clone()?);
     }
-    sender.send(Message::InternalClient(core_side))?;
+    sender.send(Message::InternalClient(core_side.into()))?;
     let conn = conn::Conn::setup(ours)?;
     bridge::Bridge::new(conn, pasteboard)?.run()
 }

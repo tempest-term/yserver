@@ -561,16 +561,16 @@ pub struct RecordingBackend {
     /// Set when the release has crossed the test backend's yield boundary.
     pub vt_release_finished: std::sync::Arc<std::sync::atomic::AtomicBool>,
     /// Test probe: capture output already written when the VT release finishes.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub vt_release_probe_client: Option<u32>,
     /// Whether the probe client had reply bytes written before release finished.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub vt_release_wire_visible_before_finish: bool,
     /// Test probe: source whose config inventory value is sampled at release.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub vt_release_probe_source: Option<crate::xinput::InputSourceId>,
     /// The probe source's inventory accel speed observed at release finish.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub vt_release_inventory_accel_before_finish: Option<f32>,
 }
 
@@ -681,13 +681,13 @@ impl RecordingBackend {
             glx_available: true,
             vt_release_pause_queued: false,
             vt_release_finished: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
-            #[cfg(test)]
+            #[cfg(all(test, feature = "native"))]
             vt_release_probe_client: None,
-            #[cfg(test)]
+            #[cfg(all(test, feature = "native"))]
             vt_release_wire_visible_before_finish: false,
-            #[cfg(test)]
+            #[cfg(all(test, feature = "native"))]
             vt_release_probe_source: None,
-            #[cfg(test)]
+            #[cfg(all(test, feature = "native"))]
             vt_release_inventory_accel_before_finish: None,
         }
     }
@@ -836,7 +836,7 @@ impl Backend for RecordingBackend {
         state: &mut crate::server::ServerState,
         input_inventory: &crate::core_loop::input_inventory::InputInventory,
     ) {
-        #[cfg(test)]
+        #[cfg(all(test, feature = "native"))]
         {
             self.vt_release_wire_visible_before_finish = self
                 .vt_release_probe_client
@@ -2615,7 +2615,7 @@ impl Backend for RecordingBackend {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
 

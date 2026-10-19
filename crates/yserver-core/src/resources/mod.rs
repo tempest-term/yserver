@@ -4,7 +4,7 @@ mod cleanup;
 mod gc;
 mod picture_font_cursor;
 mod pixmap_props;
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests;
 mod tree;
 mod types;
@@ -18,7 +18,7 @@ pub use window::*;
 
 use std::collections::{HashMap, HashSet};
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 use yserver_protocol::x11::FontMetrics;
 use yserver_protocol::x11::{ClientId, ResourceId};
 
@@ -290,7 +290,7 @@ impl ResourceTable {
     }
 
     /// Seed a minimal GC into the resource table. For use in tests only.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub fn seed_gc_for_test(&mut self, owner: ClientId, id: ResourceId) {
         self.gcs
             .insert(id.0, Gc::with_defaults(id, ROOT_WINDOW, owner));
@@ -298,7 +298,7 @@ impl ResourceTable {
 
     /// Seed a GC that names `host_xid` as its tile — the GC arm of
     /// [`Self::host_xid_still_referenced`]. For use in tests only.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub fn seed_gc_with_tile_for_test(
         &mut self,
         owner: ClientId,
@@ -311,7 +311,7 @@ impl ResourceTable {
     }
 
     /// Seed a minimal Font into the resource table. For use in tests only.
-    #[cfg(test)]
+    #[cfg(all(test, feature = "native"))]
     pub fn seed_font_for_test(&mut self, owner: ClientId, id: ResourceId) {
         use crate::backend::FontHandle;
         self.fonts.insert(

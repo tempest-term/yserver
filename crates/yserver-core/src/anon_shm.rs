@@ -88,7 +88,7 @@ fn set_cloexec(fd: &OwnedFd) -> io::Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::{create_anon_shm, create_unlinked_posix_shm};
     use std::os::fd::{AsRawFd, OwnedFd};

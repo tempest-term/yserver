@@ -193,7 +193,7 @@ fn encode_state_notify_chain(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use crate::{resources::ROOT_WINDOW, server::ClientState};

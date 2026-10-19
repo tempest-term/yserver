@@ -7,7 +7,7 @@ pub mod handles;
 pub mod params;
 mod trait_def;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 pub mod recording;
 
 pub use gamma::{identity_ramp, resample_channel};
@@ -21,8 +21,8 @@ pub use params::{
 };
 pub use trait_def::{
     ActiveCursorImage, Backend, BackendFdKind, CompletedPresentEvent, CrtcConfigApply,
-    CrtcConfigToken, DisplayedCursor, Dri3Caps, Dri3ImportModifier, Dri3PixmapExport,
-    HostSocketStatus, KeyboardMappingChange, KeymapLoad, ModeSpec, PresentCaps, PresentClockSample,
+    CrtcConfigToken, DisplayedCursor, Dri3Caps, Dri3ImportModifier, HostSocketStatus,
+    KeyboardMappingChange, KeymapLoad, ModeSpec, PresentCaps, PresentClockSample,
     PresentClockSource, PresentScanoutCandidate, PresentSourceWait, PresentWake, RealizeBackground,
     SyncobjHandle, XkbIndicatorMapsChange, XkbNewKeyboardInfo, XkbSetEvent, XkbSetOutcome,
     XshmfenceHandle,
@@ -195,7 +195,7 @@ pub struct OriginContext {
     pub opcode: u8,
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::BackendCapabilities;
     use crate::backend::recording::RecordingBackend;
@@ -313,3 +313,6 @@ mod tests {
         assert_eq!(caps.glx_vendor_names, "nvidia mesa");
     }
 }
+
+#[cfg(feature = "native")]
+pub use trait_def::Dri3PixmapExport;

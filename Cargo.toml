@@ -39,7 +39,7 @@ signal-hook = "0.4"
 thiserror = "2"
 udev = "0.9"
 xkbcommon = "0.9"
-yserver-core = { path = "crates/yserver-core", default-features = false }
+yserver-core = { path = "crates/yserver-core", default-features = false, features = ["native"] }
 yserver-protocol = { path = "crates/yserver-protocol", default-features = false }
 yserver-render = { path = "crates/yserver-render", default-features = false }
 

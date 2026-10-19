@@ -439,7 +439,7 @@ pub(crate) fn send_legacy_map_notify(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
 

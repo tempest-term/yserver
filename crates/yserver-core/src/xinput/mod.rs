@@ -1579,7 +1579,7 @@ pub fn encode_xi1_device_valuator(
 // Tests
 // ---------------------------------------------------------------------------
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use crate::server::AtomTable;

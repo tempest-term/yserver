@@ -1,0 +1,31 @@
+name: Embedded core
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+jobs:
+  portable:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy -p yserver-core --no-default-features --features embedded --all-targets --locked -- -D warnings
+      - run: cargo test -p yserver-core --no-default-features --features embedded --all-targets --locked
+      - run: cargo test -p yserver-protocol --all-targets --locked
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          target: aarch64-linux-android
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check -p yserver-core --no-default-features --features embedded --target aarch64-linux-android --locked

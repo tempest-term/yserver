@@ -676,7 +676,7 @@ pub fn fanout_raw_event_to_clients(
     disconnected
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::*;
     use std::{

@@ -4,6 +4,7 @@
 // glue, region/shape ops). The legacy `handle_client`/`handle_request`
 // path was deleted in H1.
 
+#[cfg(feature = "native")]
 use std::{
     fs,
     io::{self, ErrorKind},
@@ -11,10 +12,13 @@ use std::{
     path::PathBuf,
 };
 
+#[cfg(feature = "native")]
 use log::{error, info};
 use yserver_protocol::x11::{ResourceId, shape as x11shape, xfixes as x11xfixes};
 
-use crate::{host_x11::HostX11Backend, server::ServerState};
+#[cfg(feature = "native")]
+use crate::host_x11::HostX11Backend;
+use crate::server::ServerState;
 
 // Extension error-code bases. INVARIANT: each extension's reserved range
 // `[first_error, first_error + error_count)` must NOT overlap any other
@@ -355,6 +359,7 @@ pub(crate) const EXTENSIONS: &[ExtensionMetadata] = &[
     },
 ];
 
+#[cfg(feature = "native")]
 pub fn run(display: u16, width: u16, height: u16) -> io::Result<()> {
     let socket_dir = PathBuf::from("/tmp/.X11-unix");
     fs::create_dir_all(&socket_dir)?;
@@ -957,7 +962,7 @@ pub(crate) fn clear_shape_rects(server: &mut ServerState, window: ResourceId, ki
 // Subtract resets the per-object `pending_notify_fired` flag.
 
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
-#[cfg(test)]
+#[cfg(all(test, feature = "native"))]
 mod tests {
     use super::EXTENSIONS;
 
