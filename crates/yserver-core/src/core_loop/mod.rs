@@ -8,10 +8,6 @@
 pub mod auth;
 pub mod barriers;
 pub mod client_io;
-#[cfg(feature = "native")]
-pub mod client_reader;
-#[cfg(not(feature = "native"))]
-#[path = "embedded_reader.rs"]
 pub mod client_reader;
 pub mod clip_list;
 pub mod composite_overlay;

@@ -1,7 +1,7 @@
 name: Embedded core
 on:
   push:
-    branches: [master]
+    branches: [master, codex/portable-embedded-core]
   pull_request:
     branches: [master]
 jobs:
@@ -17,8 +17,8 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy -p yserver-core --no-default-features --features embedded --all-targets --locked -- -D warnings
-      - run: cargo test -p yserver-core --no-default-features --features embedded --all-targets --locked
+      - run: cargo clippy -p yserver-core --no-default-features --all-targets --locked -- -D warnings
+      - run: cargo test -p yserver-core --no-default-features --all-targets --locked
       - run: cargo test -p yserver-protocol --all-targets --locked
   android:
     runs-on: ubuntu-latest
@@ -28,4 +28,4 @@ jobs:
         with:
           target: aarch64-linux-android
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check -p yserver-core --no-default-features --features embedded --target aarch64-linux-android --locked
+      - run: cargo check -p yserver-core --no-default-features --target aarch64-linux-android --locked

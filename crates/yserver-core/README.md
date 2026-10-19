@@ -6,10 +6,10 @@ listeners, shared memory and descriptor-passing behavior.
 For an in-process server on Windows, Android, iOS, macOS or Linux, use:
 
 ```toml
-yserver-core = { version = "1.7.1", default-features = false, features = ["embedded"] }
+yserver-core = { git = "https://github.com/tempest-term/yserver.git", tag = "yserver-core-v1.7.1-tempest.2", default-features = false }
 ```
 
-The `embedded` feature adds `MemoryStream`, a bounded duplex byte stream with
+The portable core provides `MemoryStream`, a bounded duplex byte stream with
 `Read`, `Write`, `try_clone`, timeouts and shutdown. Its cloned handles have
 independent blocking modes; shutting down an endpoint affects all its clones.
 Dropping its last handle closes the endpoint. Peer reads wake the core to retry
@@ -29,19 +29,18 @@ A process-local connection does not make a forwarded client local.
 
 With `native` disabled, native socket/host backends and SysV/POSIX shared memory,
 DRI3 and ancillary FD implementations are not compiled. MIT-SHM and DRI3 are not
-advertised. Protocol encoders remain portable and unchanged. Native and embedded
-features can also coexist on Unix; only actual native sockets enter the native
-poll/FD path.
+advertised. Protocol encoders remain portable and unchanged. On Unix the default
+build accepts both native and memory clients; only actual native sockets enter
+the native poll/FD path.
 
 Validation:
 
 ```sh
 cargo test -p yserver-core --locked
-cargo test -p yserver-core --features embedded --locked
-cargo test -p yserver-core --no-default-features --features embedded --locked
-cargo clippy -p yserver-core --no-default-features --features embedded --all-targets -- -D warnings
-cargo check -p yserver-core --no-default-features --features embedded --target x86_64-pc-windows-gnu
-cargo check -p yserver-core --no-default-features --features embedded --target aarch64-linux-android
+cargo test -p yserver-core --no-default-features --locked
+cargo clippy -p yserver-core --no-default-features --all-targets -- -D warnings
+cargo check -p yserver-core --no-default-features --target x86_64-pc-windows-gnu
+cargo check -p yserver-core --no-default-features --target aarch64-linux-android
 ```
 
 The Unix/backend test suite remains enabled for `native` builds. Embedded builds

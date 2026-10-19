@@ -34,7 +34,7 @@ lives in [`code-quality-audit-2026-07-26.md`](code-quality-audit-2026-07-26.md).
 ---
 
 - **2026-10-19 portable embedded core:** `yserver-core` now has a default
-  `native` feature and an opt-in `embedded` memory transport. Disabling
+  `native` feature and a portable in-process memory transport. Disabling
   `native` excludes Unix sockets, host X11, shared memory and descriptor
   passing, while retaining protocol dispatch and a host-provided backend.
   See [`crates/yserver-core/README.md`](../crates/yserver-core/README.md)

@@ -19,8 +19,6 @@ proptest = "1"
 default = ["native"]
 # Unix host backends, socket listeners, shared memory and descriptor passing.
 native = ["dep:libc", "mio/net", "mio/os-ext"]
-# Bounded in-process byte streams; supports Windows, Android and Apple targets.
-embedded = []
 xdmcp = ["native", "yserver-protocol/xdmcp"]
 
 [lints]

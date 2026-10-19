@@ -29,10 +29,15 @@
 //! dropping its `reader_control`, so a reader parked on a barrier
 //! also exits.
 
+use std::io;
+#[cfg(feature = "native")]
 use std::{
-    io::{self, ErrorKind},
+    io::ErrorKind,
     os::fd::{FromRawFd, RawFd},
 };
+
+#[cfg(feature = "native")]
+use crate::unix_fd::FdReader;
 
 use crossbeam_channel::{Receiver, TryRecvError};
 use log::warn;
@@ -43,7 +48,6 @@ use crate::{
     core_loop::{message::Message, sender::BoundSender},
     server::ReaderControl,
     transport::Transport,
-    unix_fd::FdReader,
 };
 
 /// X11 BigRequests `Enable` minor opcode (always 0 — see X.Org spec).
@@ -124,7 +128,10 @@ fn run(
     control_rx: Receiver<ReaderControl>,
     sender: &BoundSender,
 ) -> io::Result<()> {
+    #[cfg(feature = "native")]
     let mut reader = BlockingFdReader::new(FdReader::new(stream));
+    #[cfg(not(feature = "native"))]
+    let mut reader = stream;
     let mut big = false;
     let mut sequence: u16 = 0;
     let mut ingress = ReaderIngressWindow::default();
@@ -192,22 +199,27 @@ fn run(
         // one `writev` with a single SCM_RIGHTS attachment — Mesa's
         // xcb-dri3 hits this every time. Now we peek at the (major,
         // minor[, body]) and pop exactly the right count.
-        let fd_count = expected_fd_count(header.opcode, header.data, &body);
-        let mut attached_fd: Option<RawFd> = None;
-        for _ in 0..fd_count {
-            // First fd → attached_fd; any extras (PixmapFromBuffers
-            // num_buffers > 1) are closed because Phase 4.2 only
-            // accepts num_buffers == 1 — the dispatcher rejects
-            // larger requests with BadAlloc anyway.
-            match reader.pop_fd() {
-                Some(raw) if attached_fd.is_none() => attached_fd = Some(raw),
-                Some(raw) => {
-                    // SAFETY: own the raw fd; close to avoid leak.
-                    unsafe { libc::close(raw) };
+        #[cfg(feature = "native")]
+        let attached_fd = {
+            let fd_count = expected_fd_count(header.opcode, header.data, &body);
+            let mut attached_fd: Option<RawFd> = None;
+            for _ in 0..fd_count {
+                // First fd → attached_fd; any extras (PixmapFromBuffers
+                // num_buffers > 1) are closed because Phase 4.2 only
+                // accepts num_buffers == 1 — the dispatcher rejects
+                // larger requests with BadAlloc anyway.
+                match reader.pop_fd() {
+                    Some(raw) if attached_fd.is_none() => attached_fd = Some(raw),
+                    Some(raw) => {
+                        // SAFETY: own the raw fd; close to avoid leak.
+                        unsafe { libc::close(raw) };
+                    }
+                    None => break,
                 }
-                None => break,
             }
-        }
+
+            attached_fd
+        };
 
         let is_enable =
             header.opcode == big_requests_major && header.data == BIG_REQUESTS_ENABLE_MINOR;
@@ -219,6 +231,7 @@ fn run(
             accepted_at: telemetry_enabled.then(std::time::Instant::now),
             header,
             body,
+            #[cfg(feature = "native")]
             attached_fd: attached_fd.map(|raw| {
                 // SAFETY: FdReader hands us an fd it received via SCM_RIGHTS;
                 // there's no other owner.
@@ -252,6 +265,7 @@ fn run(
 /// one `writev` carrying a single fd).
 ///
 /// Major opcodes are the *yserver-local* values (DRI3=147, MIT-SHM=130).
+#[cfg(feature = "native")]
 fn expected_fd_count(major_opcode: u8, minor_opcode: u8, body: &[u8]) -> usize {
     match major_opcode {
         // MIT-SHM AttachFd (minor 6) — 1 fd.
@@ -283,10 +297,12 @@ fn expected_fd_count(major_opcode: u8, minor_opcode: u8, body: &[u8]) -> usize {
 /// with the writer-side clone (see module docs), but `Read::read` on
 /// this wrapper never returns `WouldBlock`, which keeps `read_exact`
 /// — and therefore `x11::read_request` — re-entry-free.
+#[cfg(feature = "native")]
 struct BlockingFdReader {
     inner: FdReader,
 }
 
+#[cfg(feature = "native")]
 impl BlockingFdReader {
     fn new(inner: FdReader) -> Self {
         Self { inner }
@@ -301,6 +317,7 @@ impl BlockingFdReader {
     }
 }
 
+#[cfg(feature = "native")]
 impl io::Read for BlockingFdReader {
     fn read(&mut self, dst: &mut [u8]) -> io::Result<usize> {
         loop {
@@ -318,6 +335,7 @@ impl io::Read for BlockingFdReader {
 /// Block until `fd` is readable (or `poll(2)` errors).  POLLHUP is
 /// also surfaced as readable so the caller observes EOF on the next
 /// `read`.
+#[cfg(feature = "native")]
 pub(crate) fn wait_readable(fd: RawFd) -> io::Result<()> {
     use std::time::Duration;
     let mut pfd = libc::pollfd {

@@ -22,7 +22,5 @@ mod unix_fd;
 pub mod xauth;
 pub mod xinput;
 
-#[cfg(feature = "embedded")]
 mod memory_stream;
-#[cfg(feature = "embedded")]
 pub use memory_stream::MemoryStream;

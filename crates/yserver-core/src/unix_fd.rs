@@ -213,7 +213,6 @@ impl io::Read for UnixFdReader {
 pub(crate) enum FdReader {
     Unix(UnixFdReader),
     Tcp(TcpStream),
-    #[cfg(feature = "embedded")]
     Memory(crate::MemoryStream),
 }
 
@@ -222,7 +221,6 @@ impl FdReader {
         match stream {
             Transport::Unix(stream) => Self::Unix(UnixFdReader::new(stream)),
             Transport::Tcp(stream) => Self::Tcp(stream),
-            #[cfg(feature = "embedded")]
             Transport::Memory(stream) => Self::Memory(stream),
             #[cfg(all(test, feature = "native"))]
             Transport::Capture(_) => panic!("test capture transport cannot read client requests"),
@@ -235,7 +233,6 @@ impl FdReader {
         match self {
             Self::Unix(reader) => reader.pop_fd(),
             Self::Tcp(_) => None,
-            #[cfg(feature = "embedded")]
             Self::Memory(_) => None,
         }
     }
@@ -246,7 +243,6 @@ impl FdReader {
         match self {
             Self::Unix(reader) => reader.stream.as_raw_fd(),
             Self::Tcp(stream) => stream.as_raw_fd(),
-            #[cfg(feature = "embedded")]
             Self::Memory(_) => -1,
         }
     }
@@ -257,7 +253,6 @@ impl io::Read for FdReader {
         match self {
             Self::Unix(reader) => reader.read(dst),
             Self::Tcp(stream) => stream.read(dst),
-            #[cfg(feature = "embedded")]
             Self::Memory(stream) => stream.read(dst),
         }
     }

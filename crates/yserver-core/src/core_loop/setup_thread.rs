@@ -169,7 +169,6 @@ fn run_setup(
         Transport::Unix(_) => AuthTransport::Unix,
         #[cfg(feature = "native")]
         Transport::Tcp(_) => AuthTransport::Tcp,
-        #[cfg(feature = "embedded")]
         Transport::Memory(_) => AuthTransport::Tcp,
         #[cfg(all(test, feature = "native"))]
         Transport::Capture(_) => panic!("test capture transport cannot perform setup"),

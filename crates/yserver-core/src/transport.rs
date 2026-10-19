@@ -9,7 +9,6 @@ use std::{
     time::Duration,
 };
 
-#[cfg(feature = "embedded")]
 use crate::MemoryStream;
 #[cfg(feature = "native")]
 use std::{
@@ -32,7 +31,6 @@ pub enum Transport {
     Unix(UnixStream),
     #[cfg(feature = "native")]
     Tcp(TcpStream),
-    #[cfg(feature = "embedded")]
     Memory(MemoryStream),
     #[cfg(all(test, feature = "native"))]
     Capture(Arc<Mutex<VecDeque<u8>>>),
@@ -73,15 +71,10 @@ impl Read for CapturedPeer {
 
 impl Transport {
     pub fn is_memory(&self) -> bool {
-        #[cfg(feature = "embedded")]
-        if matches!(self, Self::Memory(_)) {
-            return true;
-        }
-        false
+        matches!(self, Self::Memory(_))
     }
     pub(crate) fn set_write_waker(&self, sender: crate::core_loop::CoreSender) {
         match self {
-            #[cfg(feature = "embedded")]
             Self::Memory(stream) => stream.set_write_waker(sender),
             #[cfg(feature = "native")]
             _ => {
@@ -113,7 +106,6 @@ impl Transport {
             Self::Unix(stream) => stream.set_nonblocking(nonblocking),
             #[cfg(feature = "native")]
             Self::Tcp(stream) => stream.set_nonblocking(nonblocking),
-            #[cfg(feature = "embedded")]
             Self::Memory(stream) => stream.set_nonblocking(nonblocking),
             #[cfg(all(test, feature = "native"))]
             Self::Capture(_) => Ok(()),
@@ -126,7 +118,6 @@ impl Transport {
             Self::Unix(stream) => stream.try_clone().map(Self::Unix),
             #[cfg(feature = "native")]
             Self::Tcp(stream) => stream.try_clone().map(Self::Tcp),
-            #[cfg(feature = "embedded")]
             Self::Memory(stream) => stream.try_clone().map(Self::Memory),
             #[cfg(all(test, feature = "native"))]
             Self::Capture(bytes) => Ok(Self::Capture(bytes.clone())),
@@ -139,7 +130,6 @@ impl Transport {
             Self::Unix(stream) => stream.shutdown(how),
             #[cfg(feature = "native")]
             Self::Tcp(stream) => stream.shutdown(how),
-            #[cfg(feature = "embedded")]
             Self::Memory(stream) => stream.shutdown(how),
             #[cfg(all(test, feature = "native"))]
             Self::Capture(_) => Ok(()),
@@ -152,7 +142,6 @@ impl Transport {
             Self::Unix(stream) => stream.set_read_timeout(timeout),
             #[cfg(feature = "native")]
             Self::Tcp(stream) => stream.set_read_timeout(timeout),
-            #[cfg(feature = "embedded")]
             Self::Memory(stream) => stream.set_read_timeout(timeout),
             #[cfg(all(test, feature = "native"))]
             Self::Capture(_) => Ok(()),
@@ -165,7 +154,6 @@ impl Transport {
             Self::Unix(stream) => stream.set_write_timeout(timeout),
             #[cfg(feature = "native")]
             Self::Tcp(stream) => stream.set_write_timeout(timeout),
-            #[cfg(feature = "embedded")]
             Self::Memory(stream) => stream.set_write_timeout(timeout),
             #[cfg(all(test, feature = "native"))]
             Self::Capture(_) => Ok(()),
@@ -188,7 +176,6 @@ impl Read for Transport {
             Self::Unix(stream) => stream.read(buf),
             #[cfg(feature = "native")]
             Self::Tcp(stream) => stream.read(buf),
-            #[cfg(feature = "embedded")]
             Self::Memory(stream) => stream.read(buf),
             #[cfg(all(test, feature = "native"))]
             Self::Capture(_) => Ok(0),
@@ -203,7 +190,6 @@ impl Write for Transport {
             Self::Unix(stream) => stream.write(buf),
             #[cfg(feature = "native")]
             Self::Tcp(stream) => stream.write(buf),
-            #[cfg(feature = "embedded")]
             Self::Memory(stream) => stream.write(buf),
             #[cfg(all(test, feature = "native"))]
             Self::Capture(bytes) => {
@@ -219,7 +205,6 @@ impl Write for Transport {
             Self::Unix(stream) => stream.flush(),
             #[cfg(feature = "native")]
             Self::Tcp(stream) => stream.flush(),
-            #[cfg(feature = "embedded")]
             Self::Memory(stream) => stream.flush(),
             #[cfg(all(test, feature = "native"))]
             Self::Capture(_) => Ok(()),
@@ -235,7 +220,6 @@ impl AsRawFd for Transport {
             Self::Unix(stream) => stream.as_raw_fd(),
             #[cfg(feature = "native")]
             Self::Tcp(stream) => stream.as_raw_fd(),
-            #[cfg(feature = "embedded")]
             Self::Memory(_) => -1,
             #[cfg(all(test, feature = "native"))]
             Self::Capture(_) => -1,
@@ -282,7 +266,6 @@ impl AsRawFd for Listener {
     }
 }
 
-#[cfg(feature = "embedded")]
 impl From<MemoryStream> for Transport {
     fn from(stream: MemoryStream) -> Self {
         Self::Memory(stream)

@@ -2087,7 +2087,7 @@ pub fn run_core(
     );
     #[cfg(not(feature = "native"))]
     super::reset::force_destroy_all_clients(state, backend);
-    #[cfg(all(feature = "native", feature = "embedded"))]
+    #[cfg(feature = "native")]
     {
         let memory_clients: Vec<_> = state
             .clients
@@ -4692,7 +4692,6 @@ fn handle_client_setup_complete(
         Transport::Unix(_) => "unix",
         #[cfg(feature = "native")]
         Transport::Tcp(_) => "TCP",
-        #[cfg(feature = "embedded")]
         Transport::Memory(_) => "memory",
         #[cfg(all(test, feature = "native"))]
         Transport::Capture(_) => "test capture",
